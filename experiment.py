@@ -41,7 +41,8 @@ def run_seed(job):
                                   generations=job['generations'],
                                   population_size=job['population'],
                                   progress='straight' if job['legacy'] else 'track',
-                                  lap_bonus=not job['legacy'])
+                                  lap_bonus=not job['legacy'],
+                                  lookahead=job.get('lookahead', False))
         while True:
             session.run_generation()
             if session.finished:
@@ -78,7 +79,8 @@ def write_report(folder, settings, results):
     lapped = [r for r in rows if r['first_lap_generation']]
     lines = [f"# Experiment: {settings['track']} track, {len(rows)} seeds", '',
              f"Population {settings['population']}, {settings['generations']} generations, "
-             f"fitness: {'v1.0 legacy' if settings['legacy'] else 'progress along track + lap-time bonus'}.",
+             f"fitness: {'v1.0 legacy' if settings['legacy'] else 'progress along track + lap-time bonus'}"
+             f"{', look-ahead input (13 inputs)' if settings.get('lookahead') else ', 11 inputs'}.",
              '', '## Training', '',
              '| Seed | First lap (generation) | Final best | Final average | Final lap completion | Best lap |',
              '| --- | --- | --- | --- | --- | --- |']
@@ -134,6 +136,8 @@ def main(argv=None):
     parser.add_argument('--generations', type=int, default=30)
     parser.add_argument('--population', type=int, default=POPULATION_SIZE)
     parser.add_argument('--legacy-fitness', action='store_true')
+    parser.add_argument('--lookahead', action='store_true',
+                        help='Drivers also see the direction to the checkpoint after next.')
     parser.add_argument('--workers', type=int, default=os.cpu_count() or 1)
     parser.add_argument('--output', help='Folder for results (default experiments/<time>-<track>)')
     args = parser.parse_args(argv)
@@ -143,7 +147,8 @@ def main(argv=None):
         Path(__file__).resolve().parent / 'experiments' / f'{stamp}-{args.track}')
     folder.mkdir(parents=True, exist_ok=True)
     settings = dict(track=args.track, seeds=args.seeds, generations=args.generations,
-                    population=args.population, legacy=args.legacy_fitness)
+                    population=args.population, legacy=args.legacy_fitness,
+                    lookahead=args.lookahead)
     jobs = [dict(settings, seed=s, folder=str(folder / f'seed-{s}')) for s in args.seeds]
     print(f'Running {len(jobs)} seeds on {args.workers} worker(s) -> {folder}', flush=True)
     with multiprocessing.Pool(min(args.workers, len(jobs))) as pool:

@@ -2,7 +2,7 @@ import pygame
 from settings import MAX_SPEED
 
 
-def get_observation(car, track, race, sensors):
+def get_observation(car, track, race, sensors, lookahead=False):
     forward = pygame.Vector2(1, 0).rotate(-car.angle)
     sideways = pygame.Vector2(-forward.y, forward.x)
 
@@ -23,12 +23,26 @@ def get_observation(car, track, race, sensors):
     target_forward = to_target.dot(forward)
     target_sideways = to_target.dot(sideways)
 
-    return sensors.get_readings() + [
+    observation = sensors.get_readings() + [
         forward_speed,
         sideways_speed,
         target_forward,
         target_sideways,
     ]
+    if lookahead:
+        # Direction to the checkpoint AFTER the next one, so a hairpin is
+        # visible before the car reaches it.
+        after = track.checkpoints[(race.next_checkpoint + 1) % len(track.checkpoints)]
+        to_after = pygame.Vector2(after.centre) - car.position
+        if to_after.length_squared() > 0:
+            to_after = to_after.normalize()
+        observation += [to_after.dot(forward), to_after.dot(sideways)]
+    return observation
+
+
+def observe(network, car, track, race, sensors):
+    """The observation this particular network was built for (11 or 13 inputs)."""
+    return get_observation(car, track, race, sensors, lookahead=network.uses_lookahead)
 
 
 def choose_action(network, observation):

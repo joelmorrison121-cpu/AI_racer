@@ -12,7 +12,7 @@ import pygame
 from car import Car
 from race import Race
 from sensors import Sensors
-from controller import get_observation, choose_action
+from controller import observe, choose_action
 from settings import SIMULATION_DT
 
 LAP_TIME_BONUS = 1000.0
@@ -62,7 +62,7 @@ class Agent:
         step_index = self.steps
         self.steps += 1
         self.sensors.update(self.car, track)
-        observation = get_observation(self.car, track, self.race, self.sensors)
+        observation = observe(self.network, self.car, track, self.race, self.sensors)
         actions = choose_action(self.network, observation)
         self.car.update(dt, *actions)
         self.race.advance_timer(dt, self.car.speed)

@@ -19,6 +19,7 @@ from evolution import (POPULATION_SIZE, GENERATIONS, new_population, breed, save
                        write_json, network_to_dict, network_from_dict,
                        rng_state_to_json, rng_state_from_json)
 from progress_graph import save_progress_png
+from network import BASE_INPUTS, LOOKAHEAD_INPUTS
 from settings import SIMULATION_DT
 from track import add_track_argument
 
@@ -34,7 +35,7 @@ def car_colour(index, population_size):
 class TrainingSession:
     def __init__(self, track, output_directory, seed=42, generations=GENERATIONS,
                  population_size=POPULATION_SIZE, save_graph=True, progress='track',
-                 lap_bonus=True, _restoring=False):
+                 lap_bonus=True, lookahead=False, _restoring=False):
         self.track = track
         self.progress = progress
         self.lap_bonus = lap_bonus
@@ -49,8 +50,10 @@ class TrainingSession:
         self.best_lap = None
         self.history = []
         self.generation_done = False
+        self.lookahead = lookahead
+        inputs = LOOKAHEAD_INPUTS if lookahead else BASE_INPUTS
         self.agents = [] if _restoring else self.make_agents(
-            new_population(self.rng, population_size))
+            new_population(self.rng, population_size, inputs))
 
     # ----- population -------------------------------------------------------
     def make_agents(self, networks):
@@ -91,7 +94,8 @@ class TrainingSession:
             save_champion(winner.network, winner.fitness, self.generation,
                           self.output_directory / 'champion.json',
                           track=getattr(self.track, 'name', 'classic'), seed=self.seed,
-                          progress=self.progress, lap_bonus=self.lap_bonus)
+                          progress=self.progress, lap_bonus=self.lap_bonus,
+                          lookahead=self.lookahead)
         lap_times = [a.race.last_lap_time for a in self.agents
                      if a.status == 'completed lap']
         generation_lap = min(lap_times) if lap_times else None
@@ -135,6 +139,7 @@ class TrainingSession:
             population_size=self.population_size,
             progress=self.progress,
             lap_bonus=self.lap_bonus,
+            lookahead=self.lookahead,
             generation=self.generation,
             generations=self.generations,
             best_ever=self.best_ever,
@@ -160,7 +165,8 @@ class TrainingSession:
                       generations=generations or data['generations'],
                       population_size=data['population_size'], save_graph=save_graph,
                       progress=data.get('progress', 'track'),
-                      lap_bonus=data.get('lap_bonus', True), _restoring=True)
+                      lap_bonus=data.get('lap_bonus', True),
+                      lookahead=data.get('lookahead', False), _restoring=True)
         rng_state_from_json(session.rng, data['rng_state'])
         session.generation = data['generation']
         session.best_ever = data['best_ever']
@@ -189,6 +195,9 @@ def add_training_arguments(parser):
     parser.add_argument('--legacy-fitness', action='store_true',
                         help='v1.0 scoring: straight-line progress and no lap-time bonus '
                              '(reproduces the shipped champion on the classic track).')
+    parser.add_argument('--lookahead', action='store_true',
+                        help='Give drivers 2 extra inputs: the direction to the checkpoint '
+                             'after the next one (helps on hairpins).')
     add_track_argument(parser)
     return parser
 
@@ -214,7 +223,8 @@ def create_session(args, track, output=None, save_graph=True):
     legacy = getattr(args, 'legacy_fitness', False)
     return TrainingSession(track, output, seed=args.seed, generations=args.generations,
                            population_size=args.population, save_graph=save_graph,
-                           progress='straight' if legacy else 'track', lap_bonus=not legacy)
+                           progress='straight' if legacy else 'track', lap_bonus=not legacy,
+                           lookahead=getattr(args, 'lookahead', False))
 
 
 def track_for(args):

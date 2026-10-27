@@ -3,7 +3,7 @@ import copy
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from network import NeuralNetwork
+from network import NeuralNetwork, BASE_INPUTS
 
 POPULATION_SIZE = 30
 GENERATIONS = 20
@@ -28,8 +28,8 @@ def mutate(parent, rng):
     return child
 
 
-def new_population(rng, size=POPULATION_SIZE):
-    return [NeuralNetwork(seed=rng.randrange(1_000_000_000)) for _ in range(size)]
+def new_population(rng, size=POPULATION_SIZE, inputs=BASE_INPUTS):
+    return [NeuralNetwork(seed=rng.randrange(1_000_000_000), inputs=inputs) for _ in range(size)]
 
 
 def breed(ranked_networks, rng, size=POPULATION_SIZE):
@@ -42,7 +42,8 @@ def breed(ranked_networks, rng, size=POPULATION_SIZE):
     parents = ranked_networks[:PARENT_COUNT]
     while len(children) < size - NEW_NETWORK_COUNT:
         children.append(mutate(rng.choice(parents), rng))
-    children.extend(NeuralNetwork(seed=rng.randrange(1_000_000_000))
+    inputs = ranked_networks[0].input_count
+    children.extend(NeuralNetwork(seed=rng.randrange(1_000_000_000), inputs=inputs)
                     for _ in range(NEW_NETWORK_COUNT))
     return children
 

@@ -219,7 +219,7 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# --- AI Racer ---
+# --- Crash Course ---
 # Generated training output (each run makes a timestamped folder)
 training_runs/
 *.tmp

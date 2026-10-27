@@ -1,12 +1,14 @@
-# AI Racer
+# Crash Course
 
-A 2D top-down racing game in Python and Pygame, in which neural-network drivers learn to race through **neuroevolution**. It has four circuits, from a simple rectangle to a hairpin-heavy technical track, and you can drive them yourself.
+A 2D top-down racing game in Python and Pygame, in which neural-network drivers learn to race through **neuroevolution**. Early generations crash constantly; that's the course. It has four circuits, from a simple rectangle to a hairpin-heavy technical track, and you can drive them yourself.
+
+*Formerly AI Racer.*
 
 ![Thirty AI drivers learning the circuit across generations](docs/demo.gif)
 
 *Generation 1: random networks crash or stall. By generation 13 they take the first corner, and at generation 16 the first drivers complete a lap. By generation 19, 20 of the 30 finish. [Full-quality MP4](docs/demo.mp4).*
 
-**Portfolio write-up:** [joelmorrison121-cpu.github.io/ai-racing.html](https://joelmorrison121-cpu.github.io/ai-racing.html) · **Releases:** `v1.0` (classic track) · `v2.0` (tracks, experiments)
+**Portfolio write-up:** [joelmorrison121-cpu.github.io/crash-course.html](https://joelmorrison121-cpu.github.io/crash-course.html) · **Releases:** `v1.0` (classic track) · `v2.0` (tracks, experiments) · `v2.1` (start menu, race the champion)
 
 ## Results at a glance
 
@@ -21,9 +23,25 @@ Five independent training runs (seeds 1–5) on the **flowing** track, 30 driver
 | Unseen **classic** rectangle (90° corners) | 2 / 5 complete a lap |
 | Unseen **technical** track (hairpins) | 0 / 5; they get 47% of the way round on average |
 
-The drivers learn behaviour that **transfers to similar, smoother tracks** but not yet to tight hairpins they never saw. That's the next thing to investigate.
+The drivers learn behaviour that **transfers to similar, smoother tracks** but not to tight hairpins they never saw.
 
 ![Best fitness for each seed, and the mean lap-completion rate](docs/results/flowing-5-seeds.png)
+
+### Learning the technical track directly
+
+Trained *on* technical instead (3 seeds × 40 generations, [full results](docs/results/technical-3-seeds.md)), **all 3 seeds learned a full lap**. It takes longer, though: the first lap came at generation **28 ± 9** (18, 31 and 35), past the old 20-generation default. That's why the menu now suggests 50 generations for this track. One of these champions (seed 2) laps **all four tracks**, the first all-rounder, so training on the hardest track generalised better than training on a medium one.
+
+The **look-ahead input** (the direction to the checkpoint *after* the next one, `--lookahead`) was meant to help on hairpins. It was inconclusive over the same 3 seeds: two seeds reached a lap sooner (generations 19 and 25), but one never lapped in 40 generations ([results](docs/results/technical-lookahead-3-seeds.md)). It needs more seeds before it's worth calling, so it stays optional.
+
+### Harder training tracks give more general drivers
+
+| Trained on | First lap (generation) | Laps on the *other* three tracks |
+| --- | --- | --- |
+| easy (3 seeds) | 5 ± 3 | 0 / 9 |
+| flowing (5 seeds) | 16 ± 3 | 7 / 15 |
+| technical (3 seeds) | 28 ± 9 | 5 / 9 (one seed lapped all three) |
+
+Easy tracks are learned quickly but teach little. The hairpins force drivers to brake and steer properly, and that carries over to other tracks ([easy results](docs/results/easy-3-seeds.md)).
 
 ---
 
@@ -32,8 +50,8 @@ The drivers learn behaviour that **transfers to similar, smoother tracks** but n
 You need Python 3.10 or newer (tested on 3.12 and 3.13) and a desktop display.
 
 ```bash
-git clone https://github.com/joelmorrison121-cpu/AI_racer.git
-cd AI_racer
+git clone https://github.com/joelmorrison121-cpu/crash-course.git
+cd crash-course
 python -m venv .venv
 # Windows PowerShell:  .venv\Scripts\Activate.ps1
 # macOS / Linux:       source .venv/bin/activate
@@ -42,13 +60,28 @@ python -m pip install -r requirements.txt
 
 On Windows, you can use `py` in place of `python`. The only dependency is `pygame-ce`.
 
-## Manual driving and champion playback
+## Start menu
 
 ```bash
-python main.py                                              # classic track, champion.json
-python main.py --track flowing --champion champions/flowing.json
-python main.py --track technical                            # drive it yourself
+python main.py
 ```
+
+![Start menu, track select and generation picker](docs/menu.png)
+
+- **Freeplay:** pick a track and drive it. **Tab** hands the wheel to that track's champion AI, and the panel shows the champion's lap time to beat. Beat it and you'll know.
+- **Train the AI:** pick a track and a generation cap (10, 20, 30, 50 or 100), then watch a new population learn it.
+- **Track select:** slide left and right with the arrow keys, the mouse wheel or the on-screen arrows, or jump straight to a difficulty tab: Beginner (easy), Intermediate (classic), Advanced (flowing) or Expert (technical).
+- **Esc** always takes you back a step.
+
+To skip the menu:
+
+```bash
+python main.py --track flowing          # drive a track straight away
+python main.py --track flowing --ai     # ...with the champion driving
+python main.py --track easy --champion training_runs/<run>/champion.json
+```
+
+## Driving controls
 
 | Key | Action |
 | --- | --- |
@@ -59,7 +92,9 @@ python main.py --track technical                            # drive it yourself
 | R | Reset the current attempt |
 | T | Print the current sensor inputs and the AI's decision to the terminal |
 
-The game starts in manual mode (`--ai` starts in AI mode). Press **Tab** to watch the champion drive. A crash resets the attempt but keeps your best lap time.
+| Esc | Back to the menu |
+
+A crash resets the attempt but keeps your best lap time. Only laps you drive count towards "Your best".
 
 ## Tracks
 
@@ -108,6 +143,7 @@ python live_train.py --resume training_runs/<run> --generations 60   # continue 
 | `--track NAME` | classic | `classic`, `easy`, `flowing` or `technical` |
 | `--resume FOLDER` | none | Continue a run from its `checkpoint.json` (it uses that run's track) |
 | `--legacy-fitness` | off | v1.0 scoring: straight-line progress and no lap-time bonus |
+| `--lookahead` | off | 13 inputs: also the direction to the checkpoint after the next one |
 
 Each run writes to its own `training_runs/<timestamp>/` folder, updated after every generation:
 - `champion.json`, the best network so far
@@ -160,7 +196,12 @@ Training uses a fixed random seed (42 unless `--seed` is given), so the same set
 | File | Trained on | How it was made | On other tracks |
 | --- | --- | --- | --- |
 | `champion.json` | `classic` | v1.0: generation 16 of `python train.py --legacy-fitness` (seed 42), the first lap | Laps `easy`; crashes on `flowing` (31%) and `technical` (25%) |
-| `champions/flowing.json` | `flowing` | Generation 29 of the seed-2 run in the experiment above; 15.6 s lap | Laps `classic` and `easy`; reaches 73.5% of `technical` |
+| `champions/flowing.json` | `flowing` | Generation 29 of the seed-2 flowing run above; 15.6 s lap | Laps `classic` and `easy`; reaches 73.5% of `technical` |
+| `champions/technical.json` | `technical` | Seed 1 of the technical run; fastest technical lap (23.3 s) | Specialist: doesn't get going on the other tracks |
+| `champions/all-rounder.json` | `technical` | Seed 2 of the technical run (29.3 s lap) | **Laps all four tracks** |
+| `champions/easy.json` | `easy` | Seed 1 of a 3-seed easy run; first lap at generation 4; 12.2 s lap | Doesn't transfer: crashes early on every other track |
+
+In Freeplay each track uses `champions/<track>.json`; classic uses the original `champion.json`.
 
 `python train.py --legacy-fitness` reproduces `champion.json`, apart from floating-point rounding in the last decimal place.
 
@@ -169,7 +210,8 @@ Training uses a fixed random seed (42 unless `--seed` is given), so the same set
 ## Project structure
 
 ```
-main.py            Manual driving + champion playback
+main.py            Entry point: start menu, freeplay (race the champion)
+menu.py            Title screen, track carousel, generation-cap picker
 training.py        TrainingSession: generations, history, graph, save/resume
 experiment.py      Multi-seed experiments + summary tables and graph
 evaluate_tracks.py Test a champion on every track (seen and unseen)
@@ -210,8 +252,13 @@ The 20 tests cover car physics, checkpoint order and lap records, crash resets, 
 - [x] Test on unseen tracks
 
 Next ideas:
-- Train on a **rotation of tracks** (a different track each generation) to see whether that closes the gap on `technical`
-- Give the network a look-ahead input (the direction of the checkpoint after next) for hairpins
+- [x] Start menu: Freeplay (race the champion), Train the AI with a generation cap, track carousel by difficulty
+- [x] Look-ahead input option (`--lookahead`); results inconclusive so far
+
+Next ideas:
+- Run the look-ahead comparison over more seeds
+- Train on a **rotation of tracks** (a different track each generation), since technical-trained drivers generalised best
+- Typed-in generation cap in the menu (presets for now)
 - Crossover between parents, and tuning mutation strength
 
 ## About
