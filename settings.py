@@ -1,0 +1,14 @@
+"""Window settings and tunable handling values. Units: pixels and seconds."""
+WIDTH = 1000
+HEIGHT = 700
+FPS = 60
+SIMULATION_DT = 1 / 60
+MAX_FRAME_TIME = 0.25
+GRASS_COLOUR = (45, 110, 55)
+ROAD_COLOUR = (65, 65, 70)
+ACCELERATION = 250
+BRAKING = 400
+ROLLING_RESISTANCE = 100
+MAX_SPEED = 450
+TURN_SPEED = 150
+GRIP = 5.0
